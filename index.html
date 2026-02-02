@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🥗 Macmimi Diet Tracker</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:system-ui,-apple-system,sans-serif; background:#1a1a2e; color:#eee; min-height:100vh; padding:16px; }
+  .container { max-width:480px; margin:0 auto; }
+  h1 { text-align:center; font-size:1.5em; margin-bottom:8px; }
+  .subtitle { text-align:center; color:#888; font-size:0.85em; margin-bottom:20px; }
+  .card { background:#16213e; border-radius:16px; padding:16px; margin-bottom:12px; }
+  .card h2 { font-size:1.1em; margin-bottom:10px; color:#00d4aa; }
+  .highlight { color:#00d4aa; font-weight:bold; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
+  .row.border { border-bottom:1px solid #ffffff10; }
+  .macro-bar { display:flex; gap:8px; margin-top:8px; }
+  .macro { flex:1; text-align:center; background:#0f3460; border-radius:10px; padding:8px 4px; }
+  .macro .val { font-size:1.2em; font-weight:bold; color:#00d4aa; }
+  .macro .lbl { font-size:0.7em; color:#888; margin-top:2px; }
+  .progress-bg { background:#0f3460; border-radius:10px; height:12px; overflow:hidden; margin-top:6px; }
+  .progress-fill { height:100%; border-radius:10px; transition:width 0.5s ease; }
+  .green { background:linear-gradient(90deg,#00d4aa,#00b894); }
+  .blue { background:linear-gradient(90deg,#0984e3,#74b9ff); }
+  .meal { padding:10px 0; border-bottom:1px solid #ffffff10; }
+  .meal:last-child { border:none; }
+  .meal-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .meal-header label { display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; }
+  .meal-header .cal { color:#00d4aa; font-weight:bold; font-size:0.9em; }
+  .meal-details { display:none; margin-top:8px; padding-left:28px; }
+  .meal-details.open { display:block; }
+  .meal-details li { color:#aaa; font-size:0.8em; padding:2px 0; list-style:none; }
+  .meal-details li span { color:#00d4aa; }
+  input[type=checkbox] { width:18px; height:18px; accent-color:#00d4aa; }
+  input[type=number] { background:#0f3460; border:1px solid #ffffff20; color:#eee; padding:8px 12px; border-radius:10px; width:100%; font-size:1em; }
+  button { background:#00d4aa; color:#1a1a2e; border:none; padding:10px 20px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:0.9em; }
+  button:active { transform:scale(0.97); }
+  .water-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .water-btn { width:36px; height:36px; border-radius:50%; border:2px solid #0984e3; background:transparent; color:#0984e3; font-size:1.2em; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+  .water-btn.filled { background:#0984e3; color:#fff; }
+  .weight-chart { width:100%; height:150px; margin-top:10px; }
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .stat { text-align:center; background:#0f3460; border-radius:10px; padding:10px; }
+  .stat .val { font-size:1.4em; font-weight:bold; color:#00d4aa; }
+  .stat .lbl { font-size:0.7em; color:#888; }
+  .eaten .meal-header label { text-decoration:line-through; color:#666; }
+  .eaten .cal { color:#666 !important; }
+  canvas { width:100%; height:150px; }
+  .tag { display:inline-block; background:#00d4aa20; color:#00d4aa; padding:2px 10px; border-radius:20px; font-size:0.8em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🥗 Macmimi Diet Tracker</h1>
+  <div class="subtitle" id="dateDisplay"></div>
+
+  <!-- PROGRESSION -->
+  <div class="card">
+    <h2>📊 Progression</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="val" id="currentWeight">85.0</div><div class="lbl">Poids actuel (kg)</div></div>
+      <div class="stat"><div class="val" id="lostKg">0.0</div><div class="lbl">Perdu (kg)</div></div>
+      <div class="stat"><div class="val" id="remainKg">15.0</div><div class="lbl">Reste (kg)</div></div>
+      <div class="stat"><div class="val" id="daysLeft">90</div><div class="lbl">Jours restants</div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="row"><span>Objectif 70 kg</span><span class="highlight" id="progressPct">0%</span></div>
+      <div class="progress-bg"><div class="progress-fill green" id="progressBar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- PESÉE -->
+  <div class="card">
+    <h2>⚖️ Pesée du jour</h2>
+    <div style="display:flex;gap:8px;">
+      <input type="number" id="weightInput" placeholder="Ex: 84.5" step="0.1" min="50" max="150">
+      <button onclick="logWeight()">Log</button>
+    </div>
+    <canvas id="weightChart"></canvas>
+  </div>
+
+  <!-- AUJOURD'HUI -->
+  <div class="card">
+    <h2>🍽️ Repas du jour — <span id="dayLabel" class="tag"></span></h2>
+    <div class="row" style="margin-bottom:8px;">
+      <span>Calories restantes</span>
+      <span class="highlight" id="calRemain"></span>
+    </div>
+    <div class="progress-bg"><div class="progress-fill blue" id="calBar" style="width:0%"></div></div>
+    <div class="macro-bar">
+      <div class="macro"><div class="val" id="mProt">0g</div><div class="lbl">Protéines</div></div>
+      <div class="macro"><div class="val" id="mFat">0g</div><div class="lbl">Lipides</div></div>
+      <div class="macro"><div class="val" id="mCarb">0g</div><div class="lbl">Glucides</div></div>
+    </div>
+    <div id="mealsList" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- EAU -->
+  <div class="card">
+    <h2>💧 Hydratation</h2>
+    <div class="row"><span>Objectif : 8 verres</span><span class="highlight" id="waterCount">0/8</span></div>
+    <div class="water-row" id="waterBtns"></div>
+  </div>
+
+</div>
+
+<script>
+const MEALS = {
+  1: { label:"Jour 1", cal:1614, prot:123, fat:94, carb:53, meals:[
+    {name:"🍳 Petit-déj", time:"7h", cal:292, items:["Mûres 120g — 52","Épinards sautés 150g — 50","Œufs brouillés 133g — 190"]},
+    {name:"🥜 Snack 10h", time:"10h", cal:111, items:["Amandes grillées 19g — 111"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:498, items:["Œufs durs ×2 100g — 156","Tortilla wrap 60g — 180","Poulet grillé 90g — 112","Houmous 30g — 50"]},
+    {name:"🥕 Snack 16h", time:"16h", cal:173, items:["Carottes crues 115g — 47","Sauce ranch 30g — 126"]},
+    {name:"🍽️ Dîner", time:"20h", cal:540, items:["Légumes variés 40g — 24","Côtelettes de porc 210g — 440","Assaisonnement ranch 25g — 76"]}
+  ]},
+  2: { label:"Jour 2", cal:1541, prot:129, fat:68, carb:78, meals:[
+    {name:"🍳 Petit-déj", time:"7h", cal:239, items:["Concombre tranché 200g — 30","Blancs d'œuf 230g — 120","Épinards 80g — 18","Huile d'olive 5ml — 41"]},
+    {name:"🥜 Snack 10h", time:"10h", cal:80, items:["Shake whey ½ dose 15g — 80"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:614, items:["Œuf dur 50g — 78","Tortilla wrap 60g — 180","Poulet grillé 80g — 100","Mayonnaise 15g — 100","Laitue 30g — 5","Poivron rouge 40g — 10","Canneberges 15g — 47","Amandes effilées 10g — 58"]},
+    {name:"🍎 Snack 16h", time:"16h", cal:155, items:["Poivron rouge 100g — 31","Houmous 40g — 77","Myrtilles 75g — 47"]},
+    {name:"🍽️ Dîner", time:"20h", cal:453, items:["Brocoli rôti 200g — 196","Cuisses de poulet 170g — 257"]}
+  ]},
+  3: { label:"Jour 3", cal:1596, prot:143, fat:51, carb:121, meals:[
+    {name:"🍳 Petit-déj", time:"7h", cal:217, items:["Flocons d'avoine 45g — 170","Eau 200ml — 0","Cannelle 3g — 7","Miel 10g — 40"]},
+    {name:"🍌 Snack 10h", time:"10h", cal:117, items:["Banane 120g — 117"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:618, items:["Œufs durs ×2 100g — 156","Pain complet 2 tr. 60g — 150","Dinde en tranches 120g — 130","Moutarde 10g — 10","Laitue 20g — 3"]},
+    {name:"🍮 Snack 16h", time:"16h", cal:213, items:["Power jello cups ×2 — 213"]},
+    {name:"🍽️ Dîner", time:"20h", cal:431, items:["Haricots verts 150g — 47","Huile d'olive 7ml — 61","Poulet à l'ail 170g — 274","Légumes variés 80g — 49"]}
+  ]},
+  7: { label:"Jour 7", cal:1591, prot:109, fat:106, carb:33, meals:[
+    {name:"🍳 Petit-déj", time:"7h", cal:292, items:["Mûres 120g — 52","Épinards sautés 150g — 50","Œufs brouillés 133g — 190"]},
+    {name:"🥜 Snack 10h", time:"10h", cal:111, items:["Amandes grillées 19g — 111"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:476, items:["Courgettes 250g — 43","Parmesan 20g — 80","Huile d'olive 10ml — 90","Cabillaud 227g — 200","Épices cajun + huile 5ml — 63"]},
+    {name:"🥕 Snack 16h", time:"16h", cal:173, items:["Carottes crues 115g — 47","Sauce ranch 30g — 126"]},
+    {name:"🍽️ Dîner", time:"20h", cal:539, items:["Poivron rouge 100g — 26","Oignon rouge 30g — 12","Vinaigrette 10ml — 32","Steak bavette 189g — 469"]}
+  ]}
+};
+
+const DAY_MAP = {1:1, 2:2, 3:3, 4:1, 5:2, 6:3, 0:7};
+const START_DATE = new Date('2026-02-02');
+const START_WEIGHT = 85;
+const GOAL_WEIGHT = 70;
+
+function today() { return new Date().toISOString().slice(0,10); }
+function getCycleDay() { return DAY_MAP[new Date().getDay()]; }
+function getDayData() { return MEALS[getCycleDay()]; }
+function getStore(k,d) { try{return JSON.parse(localStorage.getItem(k))||d}catch{return d} }
+function setStore(k,v) { localStorage.setItem(k,JSON.stringify(v)); }
+
+function init() {
+  const d = new Date();
+  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  document.getElementById('dateDisplay').textContent = `${days[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+  
+  renderProgress();
+  renderMeals();
+  renderWater();
+  renderWeightChart();
+}
+
+function renderProgress() {
+  const weights = getStore('weights',{});
+  const keys = Object.keys(weights).sort();
+  const current = keys.length ? weights[keys[keys.length-1]] : START_WEIGHT;
+  const lost = START_WEIGHT - current;
+  const remain = Math.max(0, current - GOAL_WEIGHT);
+  const pct = Math.min(100, (lost / (START_WEIGHT - GOAL_WEIGHT)) * 100);
+  const endDate = new Date('2026-05-02');
+  const daysLeft = Math.max(0, Math.ceil((endDate - new Date()) / 86400000));
+  
+  document.getElementById('currentWeight').textContent = current.toFixed(1);
+  document.getElementById('lostKg').textContent = lost.toFixed(1);
+  document.getElementById('remainKg').textContent = remain.toFixed(1);
+  document.getElementById('daysLeft').textContent = daysLeft;
+  document.getElementById('progressPct').textContent = pct.toFixed(0) + '%';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function renderMeals() {
+  const data = getDayData();
+  const dayLabel = document.getElementById('dayLabel');
+  dayLabel.textContent = data.label + ' — ' + data.cal + ' cal';
+  
+  const eaten = getStore('eaten_' + today(), {});
+  let calEaten = 0;
+  
+  const container = document.getElementById('mealsList');
+  container.innerHTML = '';
+  
+  data.meals.forEach((meal, i) => {
+    if (eaten[i]) calEaten += meal.cal;
+    
+    const div = document.createElement('div');
+    div.className = 'meal' + (eaten[i] ? ' eaten' : '');
+    div.innerHTML = `
+      <div class="meal-header" onclick="toggleDetails(${i})">
+        <label><input type="checkbox" ${eaten[i]?'checked':''} onchange="toggleMeal(${i},this.checked)" onclick="event.stopPropagation()"> ${meal.name} <span style="color:#888;font-size:0.8em">${meal.time}</span></label>
+        <span class="cal">${meal.cal} cal</span>
+      </div>
+      <div class="meal-details" id="details-${i}">
+        ${meal.items.map(it => {
+          const parts = it.split(' — ');
+          return `<li>${parts[0]} — <span>${parts[1]} cal</span></li>`;
+        }).join('')}
+      </div>`;
+    container.appendChild(div);
+  });
+  
+  const remain = data.cal - calEaten;
+  document.getElementById('calRemain').textContent = remain + ' / ' + data.cal + ' cal';
+  document.getElementById('calBar').style.width = ((calEaten/data.cal)*100) + '%';
+  document.getElementById('mProt').textContent = data.prot + 'g';
+  document.getElementById('mFat').textContent = data.fat + 'g';
+  document.getElementById('mCarb').textContent = data.carb + 'g';
+}
+
+function toggleMeal(i, checked) {
+  const eaten = getStore('eaten_' + today(), {});
+  eaten[i] = checked;
+  setStore('eaten_' + today(), eaten);
+  renderMeals();
+}
+
+function toggleDetails(i) {
+  document.getElementById('details-' + i).classList.toggle('open');
+}
+
+function renderWater() {
+  const count = getStore('water_' + today(), 0);
+  document.getElementById('waterCount').textContent = count + '/8';
+  const container = document.getElementById('waterBtns');
+  container.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'water-btn' + (i < count ? ' filled' : '');
+    btn.textContent = '💧';
+    btn.onclick = () => {
+      setStore('water_' + today(), i < count ? i : i + 1);
+      renderWater();
+    };
+    container.appendChild(btn);
+  }
+}
+
+function logWeight() {
+  const input = document.getElementById('weightInput');
+  const val = parseFloat(input.value);
+  if (!val || val < 50 || val > 150) return;
+  const weights = getStore('weights', {});
+  weights[today()] = val;
+  setStore('weights', weights);
+  input.value = '';
+  renderProgress();
+  renderWeightChart();
+}
+
+function renderWeightChart() {
+  const canvas = document.getElementById('weightChart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = 300;
+  ctx.scale(2, 2);
+  const W = canvas.offsetWidth, H = 150;
+  
+  ctx.clearRect(0, 0, W, H);
+  
+  const weights = getStore('weights', {});
+  const keys = Object.keys(weights).sort();
+  if (keys.length === 0) {
+    ctx.fillStyle = '#888';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Log ta première pesée ⬆️', W/2, H/2);
+    return;
+  }
+  
+  const vals = keys.map(k => weights[k]);
+  const minW = Math.min(GOAL_WEIGHT, ...vals) - 1;
+  const maxW = Math.max(START_WEIGHT, ...vals) + 1;
+  const padL = 35, padR = 10, padT = 10, padB = 25;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  
+  // Goal line
+  const goalY = padT + chartH - ((GOAL_WEIGHT - minW) / (maxW - minW)) * chartH;
+  ctx.strokeStyle = '#00d4aa40';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padL, goalY);
+  ctx.lineTo(W - padR, goalY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#00d4aa60';
+  ctx.font = '9px system-ui';
+  ctx.fillText('70 kg', padL - 3, goalY - 4);
+  
+  // Data line
+  ctx.strokeStyle = '#0984e3';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  vals.forEach((v, i) => {
+    const x = padL + (keys.length === 1 ? chartW / 2 : (i / (keys.length - 1)) * chartW);
+    const y = padT + chartH - ((v - minW) / (maxW - minW)) * chartH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  
+  // Dots
+  vals.forEach((v, i) => {
+    const x = padL + (keys.length === 1 ? chartW / 2 : (i / (keys.length - 1)) * chartW);
+    const y = padT + chartH - ((v - minW) / (maxW - minW)) * chartH;
+    ctx.fillStyle = '#0984e3';
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#eee';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(v.toFixed(1), x, y - 8);
+  });
+  
+  // X labels
+  ctx.fillStyle = '#666';
+  ctx.font = '9px system-ui';
+  keys.forEach((k, i) => {
+    const x = padL + (keys.length === 1 ? chartW / 2 : (i / (keys.length - 1)) * chartW);
+    ctx.fillText(k.slice(5), x, H - 5);
+  });
+}
+
+init();
+</script>
+</body>
+</html>
