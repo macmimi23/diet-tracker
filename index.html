@@ -142,6 +142,27 @@
     transition: background 0.2s;
   }
   .btn-add-exercise:hover { background:#00d4aa35; }
+
+  /* === Next meal highlight === */
+  .next-meal-card {
+    background:#16213e; border-radius:14px; padding:14px 14px 14px 18px;
+    margin-bottom:14px; border-left:4px solid #00d4aa;
+    position:relative; overflow:hidden;
+  }
+  .next-meal-card::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:60px;
+    background:linear-gradient(90deg,#00d4aa10,transparent); pointer-events:none;
+  }
+  .next-meal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .next-meal-label { font-size:0.8em; color:#00d4aa; font-weight:bold; }
+  .next-meal-countdown { font-size:0.75em; color:#aaa; background:#0f3460; padding:3px 10px; border-radius:20px; }
+  .next-meal-name { font-size:1.3em; font-weight:bold; margin-bottom:2px; }
+  .next-meal-time { color:#888; font-size:0.85em; margin-bottom:10px; }
+  .next-meal-items { list-style:none; margin-bottom:8px; }
+  .next-meal-items li { color:#bbb; font-size:0.82em; padding:2px 0; }
+  .next-meal-items li span { color:#00d4aa; }
+  .next-meal-total { font-weight:bold; color:#00d4aa; font-size:1em; text-align:right; }
+  .next-meal-done { text-align:center; color:#666; font-size:0.9em; padding:8px 0; }
 </style>
 </head>
 <body>
@@ -187,6 +208,7 @@
       <div class="macro"><div class="val" id="mFat">0g</div><div class="lbl">Lipides</div></div>
       <div class="macro"><div class="val" id="mCarb">0g</div><div class="lbl">Glucides</div></div>
     </div>
+    <div id="nextMealBox" style="margin-top:12px;"></div>
     <div id="mealsList" style="margin-top:12px;"></div>
     <button class="btn-add-food" onclick="openAddFoodModal()">+ Ajouter aliment</button>
   </div>
@@ -304,17 +326,75 @@ function getDayData() { return MEALS[getCycleDay()]; }
 function getStore(k,d) { try{return JSON.parse(localStorage.getItem(k))||d}catch{return d} }
 function setStore(k,v) { localStorage.setItem(k,JSON.stringify(v)); }
 
+/* === Next upcoming meal === */
+function renderNextMeal() {
+  const data = getDayData();
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes(); // current time in minutes
+
+  // Time boundaries (in minutes from midnight) and corresponding meal index + target time in minutes
+  const schedule = [
+    { before: 450,  mealIdx: 0, target: 420,  label: 'Petit-déj — 7h' },       // before 7h30 -> show 7h
+    { before: 630,  mealIdx: 1, target: 600,  label: 'Snack — 10h' },           // 7h30-10h30 -> show 10h
+    { before: 780,  mealIdx: 2, target: 750,  label: 'Déjeuner — 12h30' },      // 10h30-13h -> show 12h30
+    { before: 990,  mealIdx: 3, target: 960,  label: 'Snack — 16h' },           // 13h-16h30 -> show 16h
+    { before: 1260, mealIdx: 4, target: 1200, label: 'Dîner — 20h' },           // 16h30-21h -> show 20h
+  ];
+
+  const box = document.getElementById('nextMealBox');
+  let found = null;
+  for (const slot of schedule) {
+    if (mins < slot.before) { found = slot; break; }
+  }
+
+  if (!found) {
+    box.innerHTML = '<div class="next-meal-card"><div class="next-meal-done">✅ Tous les repas sont passés pour aujourd\'hui</div></div>';
+    return;
+  }
+
+  const meal = data.meals[found.mealIdx];
+  if (!meal) { box.innerHTML = ''; return; }
+
+  // Countdown
+  const diff = found.target - mins;
+  let countdownText;
+  if (diff <= 0) countdownText = 'maintenant';
+  else if (diff < 60) countdownText = 'dans ' + diff + ' min';
+  else { const h = Math.floor(diff / 60); const m = diff % 60; countdownText = 'dans ' + h + 'h' + (m > 0 ? String(m).padStart(2,'0') : ''); }
+
+  const itemsHtml = meal.items.map(it => {
+    const parts = it.split(' — ');
+    return '<li>' + parts[0] + ' — <span>' + parts[1] + ' cal</span></li>';
+  }).join('');
+
+  box.innerHTML =
+    '<div class="next-meal-card">' +
+      '<div class="next-meal-header">' +
+        '<span class="next-meal-label">\uD83C\uDF7D\uFE0F Prochain repas</span>' +
+        '<span class="next-meal-countdown">' + countdownText + '</span>' +
+      '</div>' +
+      '<div class="next-meal-name">' + meal.name + '</div>' +
+      '<div class="next-meal-time">' + found.label + '</div>' +
+      '<ul class="next-meal-items">' + itemsHtml + '</ul>' +
+      '<div class="next-meal-total">' + meal.cal + ' cal</div>' +
+    '</div>';
+}
+
 function init() {
   const d = new Date();
   const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
   document.getElementById('dateDisplay').textContent = `${days[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
 
   renderProgress();
+  renderNextMeal();
   renderMeals();
   renderWater();
   renderExercises();
   renderWeightChart();
   renderWeeklySummary();
+
+  // Auto-update next meal every minute
+  setInterval(renderNextMeal, 60000);
 }
 
 function renderProgress() {
