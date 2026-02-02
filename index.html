@@ -116,6 +116,16 @@
   .day-row .day-weight { color:#0984e3; }
   .day-row .day-bar { flex:1; margin:0 10px; height:6px; background:#0f3460; border-radius:3px; overflow:hidden; }
   .day-row .day-bar-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#00d4aa,#00b894); }
+
+  /* === Exercise section === */
+  .exercise { padding:8px 0; border-bottom:1px solid #ffffff10; display:flex; justify-content:space-between; align-items:center; }
+  .exercise:last-child { border:none; }
+  .exercise label { display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; }
+  .exercise .ex-cal { color:#888; font-size:0.85em; }
+  .exercise.done label { text-decoration:line-through; color:#666; }
+  .exercise.done .ex-cal { color:#666; }
+  .ex-total { margin-top:10px; text-align:right; font-size:1.1em; }
+  .ex-total .burned { color:#00d4aa; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -170,6 +180,13 @@
     <h2>💧 Hydratation</h2>
     <div class="row"><span>Objectif : 8 verres</span><span class="highlight" id="waterCount">0/8</span></div>
     <div class="water-row" id="waterBtns"></div>
+  </div>
+
+  <!-- EXERCICE DU JOUR -->
+  <div class="card">
+    <h2>🏋️ Exercice du jour</h2>
+    <div id="exerciseList"></div>
+    <div class="ex-total">Calories brûlées : <span class="burned" id="exBurned">0</span> cal</div>
   </div>
 
   <!-- WEEKLY SUMMARY -->
@@ -255,6 +272,7 @@ function init() {
   renderProgress();
   renderMeals();
   renderWater();
+  renderExercises();
   renderWeightChart();
   renderWeeklySummary();
 }
@@ -543,6 +561,38 @@ function renderWeightChart() {
     const x = padL + (keys.length === 1 ? chartW / 2 : (i / (keys.length - 1)) * chartW);
     ctx.fillText(k.slice(5), x, H - 5);
   });
+}
+
+/* === Exercise === */
+const EXERCISES = [
+  { id:'walk', name:'🚶 30 min marche (treadmill)', cal:150 },
+  { id:'meditate', name:'🧘 20 min méditation', cal:30 }
+];
+
+function renderExercises() {
+  const done = getStore('exercise_' + today(), {});
+  const container = document.getElementById('exerciseList');
+  container.innerHTML = '';
+  let totalBurned = 0;
+
+  EXERCISES.forEach(ex => {
+    if (done[ex.id]) totalBurned += ex.cal;
+    const div = document.createElement('div');
+    div.className = 'exercise' + (done[ex.id] ? ' done' : '');
+    div.innerHTML = `
+      <label><input type="checkbox" ${done[ex.id]?'checked':''} onchange="toggleExercise('${ex.id}',this.checked)"> ${ex.name}</label>
+      <span class="ex-cal">~${ex.cal} cal</span>`;
+    container.appendChild(div);
+  });
+
+  document.getElementById('exBurned').textContent = totalBurned;
+}
+
+function toggleExercise(id, checked) {
+  const done = getStore('exercise_' + today(), {});
+  done[id] = checked;
+  setStore('exercise_' + today(), done);
+  renderExercises();
 }
 
 /* === Weekly Summary === */
