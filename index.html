@@ -33,7 +33,7 @@
   .meal-details li { color:#aaa; font-size:0.8em; padding:2px 0; list-style:none; }
   .meal-details li span { color:#00d4aa; }
   input[type=checkbox] { width:18px; height:18px; accent-color:#00d4aa; }
-  input[type=number] { background:#0f3460; border:1px solid #ffffff20; color:#eee; padding:8px 12px; border-radius:10px; width:100%; font-size:1em; }
+  input[type=number], input[type=text] { background:#0f3460; border:1px solid #ffffff20; color:#eee; padding:8px 12px; border-radius:10px; width:100%; font-size:1em; }
   button { background:#00d4aa; color:#1a1a2e; border:none; padding:10px 20px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:0.9em; }
   button:active { transform:scale(0.97); }
   .water-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
@@ -48,6 +48,74 @@
   .eaten .cal { color:#666 !important; }
   canvas { width:100%; height:150px; }
   .tag { display:inline-block; background:#00d4aa20; color:#00d4aa; padding:2px 10px; border-radius:20px; font-size:0.8em; }
+
+  /* === Meal check-off animations === */
+  @keyframes greenFlash {
+    0% { background-color: transparent; }
+    30% { background-color: #00d4aa30; }
+    100% { background-color: transparent; }
+  }
+  .meal.flash-green { animation: greenFlash 0.6s ease-out; }
+  .meal .meal-header label {
+    transition: color 0.3s ease, text-decoration-color 0.3s ease;
+  }
+  .meal.eaten .meal-header label {
+    text-decoration: line-through;
+    text-decoration-color: #666;
+  }
+  .meal .cal { transition: color 0.3s ease; }
+
+  /* === Modal styles === */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    z-index:1000; align-items:center; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:#16213e; border-radius:16px; padding:24px; width:90%; max-width:400px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    animation: modalIn 0.25s ease-out;
+  }
+  @keyframes modalIn {
+    from { opacity:0; transform:translateY(20px) scale(0.95); }
+    to { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .modal h3 { color:#00d4aa; margin-bottom:16px; font-size:1.1em; }
+  .modal .field { margin-bottom:12px; }
+  .modal .field label { display:block; color:#aaa; font-size:0.8em; margin-bottom:4px; }
+  .modal .btn-row { display:flex; gap:8px; margin-top:16px; }
+  .modal .btn-row button { flex:1; }
+  .btn-cancel { background:#ffffff15 !important; color:#aaa !important; }
+  .btn-add-food {
+    background:#00d4aa20; color:#00d4aa; border:1px dashed #00d4aa60;
+    padding:8px 16px; border-radius:10px; font-weight:bold; cursor:pointer;
+    font-size:0.85em; margin-top:10px; width:100%;
+    transition: background 0.2s;
+  }
+  .btn-add-food:hover { background:#00d4aa35; }
+
+  /* === Custom food items in meal list === */
+  .custom-food { position:relative; }
+  .custom-food .remove-food {
+    color:#ff6b6b; cursor:pointer; font-size:0.75em; margin-left:8px;
+    opacity:0.6; transition:opacity 0.2s;
+  }
+  .custom-food .remove-food:hover { opacity:1; }
+
+  /* === Weekly summary === */
+  .summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
+  .summary-stat { text-align:center; background:#0f3460; border-radius:10px; padding:10px 6px; }
+  .summary-stat .val { font-size:1.2em; font-weight:bold; color:#00d4aa; }
+  .summary-stat .lbl { font-size:0.65em; color:#888; margin-top:2px; }
+  .summary-stat.negative .val { color:#ff6b6b; }
+  .summary-stat.positive .val { color:#00d4aa; }
+  .day-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #ffffff08; font-size:0.85em; }
+  .day-row:last-child { border:none; }
+  .day-row .day-name { color:#aaa; width:80px; }
+  .day-row .day-cal { color:#00d4aa; font-weight:bold; }
+  .day-row .day-weight { color:#0984e3; }
+  .day-row .day-bar { flex:1; margin:0 10px; height:6px; background:#0f3460; border-radius:3px; overflow:hidden; }
+  .day-row .day-bar-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#00d4aa,#00b894); }
 </style>
 </head>
 <body>
@@ -94,6 +162,7 @@
       <div class="macro"><div class="val" id="mCarb">0g</div><div class="lbl">Glucides</div></div>
     </div>
     <div id="mealsList" style="margin-top:12px;"></div>
+    <button class="btn-add-food" onclick="openAddFoodModal()">+ Ajouter aliment</button>
   </div>
 
   <!-- EAU -->
@@ -103,6 +172,36 @@
     <div class="water-row" id="waterBtns"></div>
   </div>
 
+  <!-- WEEKLY SUMMARY -->
+  <div class="card">
+    <h2>📅 Résumé de la semaine</h2>
+    <div class="summary-grid" id="summaryStats"></div>
+    <div id="weekDays"></div>
+  </div>
+
+</div>
+
+<!-- MODAL: Ajouter aliment -->
+<div class="modal-overlay" id="addFoodModal">
+  <div class="modal">
+    <h3>🍴 Ajouter un aliment</h3>
+    <div class="field">
+      <label>Nom de l'aliment</label>
+      <input type="text" id="foodName" placeholder="Ex: Yaourt grec">
+    </div>
+    <div class="field">
+      <label>Quantité (grammes)</label>
+      <input type="number" id="foodGrams" placeholder="Ex: 150" min="1">
+    </div>
+    <div class="field">
+      <label>Calories</label>
+      <input type="number" id="foodCalories" placeholder="Ex: 120" min="0">
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeAddFoodModal()">Annuler</button>
+      <button onclick="addCustomFood()">Ajouter</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -152,11 +251,12 @@ function init() {
   const d = new Date();
   const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
   document.getElementById('dateDisplay').textContent = `${days[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
-  
+
   renderProgress();
   renderMeals();
   renderWater();
   renderWeightChart();
+  renderWeeklySummary();
 }
 
 function renderProgress() {
@@ -168,7 +268,7 @@ function renderProgress() {
   const pct = Math.min(100, (lost / (START_WEIGHT - GOAL_WEIGHT)) * 100);
   const endDate = new Date('2026-05-02');
   const daysLeft = Math.max(0, Math.ceil((endDate - new Date()) / 86400000));
-  
+
   document.getElementById('currentWeight').textContent = current.toFixed(1);
   document.getElementById('lostKg').textContent = lost.toFixed(1);
   document.getElementById('remainKg').textContent = remain.toFixed(1);
@@ -177,22 +277,32 @@ function renderProgress() {
   document.getElementById('progressBar').style.width = pct + '%';
 }
 
+function getCustomFoods() {
+  return getStore('custom_foods_' + today(), []);
+}
+
 function renderMeals() {
   const data = getDayData();
   const dayLabel = document.getElementById('dayLabel');
-  dayLabel.textContent = data.label + ' — ' + data.cal + ' cal';
-  
+
+  const customFoods = getCustomFoods();
+  const customCal = customFoods.reduce((sum, f) => sum + f.cal, 0);
+  const totalCal = data.cal + customCal;
+
+  dayLabel.textContent = data.label + ' — ' + totalCal + ' cal';
+
   const eaten = getStore('eaten_' + today(), {});
   let calEaten = 0;
-  
+
   const container = document.getElementById('mealsList');
   container.innerHTML = '';
-  
+
   data.meals.forEach((meal, i) => {
     if (eaten[i]) calEaten += meal.cal;
-    
+
     const div = document.createElement('div');
     div.className = 'meal' + (eaten[i] ? ' eaten' : '');
+    div.id = 'meal-' + i;
     div.innerHTML = `
       <div class="meal-header" onclick="toggleDetails(${i})">
         <label><input type="checkbox" ${eaten[i]?'checked':''} onchange="toggleMeal(${i},this.checked)" onclick="event.stopPropagation()"> ${meal.name} <span style="color:#888;font-size:0.8em">${meal.time}</span></label>
@@ -206,10 +316,26 @@ function renderMeals() {
       </div>`;
     container.appendChild(div);
   });
-  
-  const remain = data.cal - calEaten;
-  document.getElementById('calRemain').textContent = remain + ' / ' + data.cal + ' cal';
-  document.getElementById('calBar').style.width = ((calEaten/data.cal)*100) + '%';
+
+  // Render custom food items
+  customFoods.forEach((food, i) => {
+    const cKey = 'c' + i;
+    if (eaten[cKey]) calEaten += food.cal;
+
+    const div = document.createElement('div');
+    div.className = 'meal custom-food' + (eaten[cKey] ? ' eaten' : '');
+    div.id = 'meal-c' + i;
+    div.innerHTML = `
+      <div class="meal-header">
+        <label><input type="checkbox" ${eaten[cKey]?'checked':''} onchange="toggleMeal('c${i}',this.checked)" onclick="event.stopPropagation()"> 🍴 ${food.name} <span style="color:#888;font-size:0.8em">${food.grams}g</span></label>
+        <span class="cal">${food.cal} cal<span class="remove-food" onclick="removeCustomFood(${i})" title="Supprimer">✕</span></span>
+      </div>`;
+    container.appendChild(div);
+  });
+
+  const remain = totalCal - calEaten;
+  document.getElementById('calRemain').textContent = remain + ' / ' + totalCal + ' cal';
+  document.getElementById('calBar').style.width = ((calEaten/totalCal)*100) + '%';
   document.getElementById('mProt').textContent = data.prot + 'g';
   document.getElementById('mFat').textContent = data.fat + 'g';
   document.getElementById('mCarb').textContent = data.carb + 'g';
@@ -217,15 +343,104 @@ function renderMeals() {
 
 function toggleMeal(i, checked) {
   const eaten = getStore('eaten_' + today(), {});
+  const wasEaten = eaten[i];
   eaten[i] = checked;
   setStore('eaten_' + today(), eaten);
+
+  // Trigger green flash animation on check
+  if (checked && !wasEaten) {
+    const el = document.getElementById('meal-' + i);
+    if (el) {
+      el.classList.add('flash-green');
+      el.addEventListener('animationend', () => el.classList.remove('flash-green'), { once: true });
+    }
+  }
+
   renderMeals();
+
+  // Re-trigger the flash after renderMeals rebuilds the DOM
+  if (checked && !wasEaten) {
+    requestAnimationFrame(() => {
+      const el = document.getElementById('meal-' + i);
+      if (el) {
+        el.classList.add('flash-green');
+        el.addEventListener('animationend', () => el.classList.remove('flash-green'), { once: true });
+      }
+    });
+  }
+
+  // Update weekly summary when meals change
+  saveDailyCalories();
+  renderWeeklySummary();
 }
 
 function toggleDetails(i) {
   document.getElementById('details-' + i).classList.toggle('open');
 }
 
+/* === Custom food modal === */
+function openAddFoodModal() {
+  document.getElementById('addFoodModal').classList.add('open');
+  document.getElementById('foodName').value = '';
+  document.getElementById('foodGrams').value = '';
+  document.getElementById('foodCalories').value = '';
+  setTimeout(() => document.getElementById('foodName').focus(), 100);
+}
+
+function closeAddFoodModal() {
+  document.getElementById('addFoodModal').classList.remove('open');
+}
+
+function addCustomFood() {
+  const name = document.getElementById('foodName').value.trim();
+  const grams = parseInt(document.getElementById('foodGrams').value);
+  const cal = parseInt(document.getElementById('foodCalories').value);
+
+  if (!name) { document.getElementById('foodName').focus(); return; }
+  if (!grams || grams <= 0) { document.getElementById('foodGrams').focus(); return; }
+  if (isNaN(cal) || cal < 0) { document.getElementById('foodCalories').focus(); return; }
+
+  const foods = getCustomFoods();
+  foods.push({ name, grams, cal });
+  setStore('custom_foods_' + today(), foods);
+
+  closeAddFoodModal();
+  renderMeals();
+  saveDailyCalories();
+  renderWeeklySummary();
+}
+
+function removeCustomFood(index) {
+  const foods = getCustomFoods();
+  foods.splice(index, 1);
+  setStore('custom_foods_' + today(), foods);
+
+  // Also clean up eaten state for custom foods
+  const eaten = getStore('eaten_' + today(), {});
+  const newEaten = {};
+  Object.keys(eaten).forEach(k => {
+    if (!k.startsWith('c')) {
+      newEaten[k] = eaten[k];
+    } else {
+      const ci = parseInt(k.slice(1));
+      if (ci < index) newEaten[k] = eaten[k];
+      else if (ci > index) newEaten['c' + (ci - 1)] = eaten[k];
+      // skip ci === index (the removed one)
+    }
+  });
+  setStore('eaten_' + today(), newEaten);
+
+  renderMeals();
+  saveDailyCalories();
+  renderWeeklySummary();
+}
+
+// Close modal on overlay click
+document.getElementById('addFoodModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddFoodModal();
+});
+
+/* === Water === */
 function renderWater() {
   const count = getStore('water_' + today(), 0);
   document.getElementById('waterCount').textContent = count + '/8';
@@ -243,6 +458,7 @@ function renderWater() {
   }
 }
 
+/* === Weight === */
 function logWeight() {
   const input = document.getElementById('weightInput');
   const val = parseFloat(input.value);
@@ -253,6 +469,7 @@ function logWeight() {
   input.value = '';
   renderProgress();
   renderWeightChart();
+  renderWeeklySummary();
 }
 
 function renderWeightChart() {
@@ -262,9 +479,9 @@ function renderWeightChart() {
   canvas.height = 300;
   ctx.scale(2, 2);
   const W = canvas.offsetWidth, H = 150;
-  
+
   ctx.clearRect(0, 0, W, H);
-  
+
   const weights = getStore('weights', {});
   const keys = Object.keys(weights).sort();
   if (keys.length === 0) {
@@ -274,13 +491,13 @@ function renderWeightChart() {
     ctx.fillText('Log ta première pesée ⬆️', W/2, H/2);
     return;
   }
-  
+
   const vals = keys.map(k => weights[k]);
   const minW = Math.min(GOAL_WEIGHT, ...vals) - 1;
   const maxW = Math.max(START_WEIGHT, ...vals) + 1;
   const padL = 35, padR = 10, padT = 10, padB = 25;
   const chartW = W - padL - padR, chartH = H - padT - padB;
-  
+
   // Goal line
   const goalY = padT + chartH - ((GOAL_WEIGHT - minW) / (maxW - minW)) * chartH;
   ctx.strokeStyle = '#00d4aa40';
@@ -293,7 +510,7 @@ function renderWeightChart() {
   ctx.fillStyle = '#00d4aa60';
   ctx.font = '9px system-ui';
   ctx.fillText('70 kg', padL - 3, goalY - 4);
-  
+
   // Data line
   ctx.strokeStyle = '#0984e3';
   ctx.lineWidth = 2;
@@ -304,7 +521,7 @@ function renderWeightChart() {
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.stroke();
-  
+
   // Dots
   vals.forEach((v, i) => {
     const x = padL + (keys.length === 1 ? chartW / 2 : (i / (keys.length - 1)) * chartW);
@@ -318,13 +535,112 @@ function renderWeightChart() {
     ctx.textAlign = 'center';
     ctx.fillText(v.toFixed(1), x, y - 8);
   });
-  
+
   // X labels
   ctx.fillStyle = '#666';
   ctx.font = '9px system-ui';
   keys.forEach((k, i) => {
     const x = padL + (keys.length === 1 ? chartW / 2 : (i / (keys.length - 1)) * chartW);
     ctx.fillText(k.slice(5), x, H - 5);
+  });
+}
+
+/* === Weekly Summary === */
+function saveDailyCalories() {
+  const data = getDayData();
+  const eaten = getStore('eaten_' + today(), {});
+  const customFoods = getCustomFoods();
+  let calEaten = 0;
+
+  data.meals.forEach((meal, i) => {
+    if (eaten[i]) calEaten += meal.cal;
+  });
+  customFoods.forEach((food, i) => {
+    if (eaten['c' + i]) calEaten += food.cal;
+  });
+
+  const dailyCals = getStore('daily_calories', {});
+  dailyCals[today()] = calEaten;
+  setStore('daily_calories', dailyCals);
+}
+
+function getWeekDates() {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7)); // go back to Monday
+
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+function renderWeeklySummary() {
+  const weekDates = getWeekDates();
+  const dailyCals = getStore('daily_calories', {});
+  const weights = getStore('weights', {});
+  const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  // Compute stats
+  const weekCals = weekDates.map(d => dailyCals[d] || 0);
+  const daysWithData = weekCals.filter(c => c > 0);
+  const avgCal = daysWithData.length ? Math.round(daysWithData.reduce((a, b) => a + b, 0) / daysWithData.length) : 0;
+  const totalCal = weekCals.reduce((a, b) => a + b, 0);
+
+  // Weight trend for the week
+  const weekWeights = weekDates.map(d => weights[d]).filter(w => w !== undefined);
+  let weightTrend = 0;
+  let trendLabel = '—';
+  let trendClass = '';
+  if (weekWeights.length >= 2) {
+    weightTrend = weekWeights[weekWeights.length - 1] - weekWeights[0];
+    trendLabel = (weightTrend > 0 ? '+' : '') + weightTrend.toFixed(1) + ' kg';
+    trendClass = weightTrend <= 0 ? 'positive' : 'negative';
+  } else if (weekWeights.length === 1) {
+    trendLabel = weekWeights[0].toFixed(1) + ' kg';
+  }
+
+  // Render summary stats
+  const statsEl = document.getElementById('summaryStats');
+  statsEl.innerHTML = `
+    <div class="summary-stat">
+      <div class="val">${avgCal || '—'}</div>
+      <div class="lbl">Moy. cal/jour</div>
+    </div>
+    <div class="summary-stat">
+      <div class="val">${totalCal}</div>
+      <div class="lbl">Total cal</div>
+    </div>
+    <div class="summary-stat ${trendClass}">
+      <div class="val">${trendLabel}</div>
+      <div class="lbl">Tendance poids</div>
+    </div>
+  `;
+
+  // Render day-by-day breakdown
+  const maxCal = Math.max(2000, ...weekCals);
+  const daysEl = document.getElementById('weekDays');
+  daysEl.innerHTML = '';
+
+  weekDates.forEach((date, i) => {
+    const cal = dailyCals[date] || 0;
+    const w = weights[date];
+    const isToday = date === today();
+
+    const row = document.createElement('div');
+    row.className = 'day-row';
+    row.style.opacity = isToday ? '1' : (cal > 0 || w ? '0.9' : '0.4');
+    row.innerHTML = `
+      <span class="day-name">${dayNames[i]}${isToday ? ' *' : ''}</span>
+      <span class="day-cal">${cal > 0 ? cal + ' cal' : '—'}</span>
+      <div class="day-bar"><div class="day-bar-fill" style="width:${cal > 0 ? (cal/maxCal)*100 : 0}%"></div></div>
+      <span class="day-weight">${w ? w.toFixed(1) + ' kg' : '—'}</span>
+    `;
+    daysEl.appendChild(row);
   });
 }
 
