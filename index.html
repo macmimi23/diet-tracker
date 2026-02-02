@@ -126,6 +126,22 @@
   .exercise.done .ex-cal { color:#666; }
   .ex-total { margin-top:10px; text-align:right; font-size:1.1em; }
   .ex-total .burned { color:#00d4aa; font-weight:bold; }
+
+  /* Custom exercise items */
+  .custom-exercise { position:relative; }
+  .custom-exercise .remove-exercise {
+    color:#ff6b6b; cursor:pointer; font-size:0.75em; margin-left:8px;
+    opacity:0.6; transition:opacity 0.2s; background:none; border:none; padding:2px 4px;
+    font-weight:normal;
+  }
+  .custom-exercise .remove-exercise:hover { opacity:1; }
+  .btn-add-exercise {
+    background:#00d4aa20; color:#00d4aa; border:1px dashed #00d4aa60;
+    padding:8px 16px; border-radius:10px; font-weight:bold; cursor:pointer;
+    font-size:0.85em; margin-top:10px; width:100%;
+    transition: background 0.2s;
+  }
+  .btn-add-exercise:hover { background:#00d4aa35; }
 </style>
 </head>
 <body>
@@ -186,6 +202,7 @@
   <div class="card">
     <h2>🏋️ Exercice du jour</h2>
     <div id="exerciseList"></div>
+    <button class="btn-add-exercise" onclick="openAddExerciseModal()">+ Ajouter exercice</button>
     <div class="ex-total">Calories brûlées : <span class="burned" id="exBurned">0</span> cal</div>
   </div>
 
@@ -217,6 +234,29 @@
     <div class="btn-row">
       <button class="btn-cancel" onclick="closeAddFoodModal()">Annuler</button>
       <button onclick="addCustomFood()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Ajouter exercice -->
+<div class="modal-overlay" id="addExerciseModal">
+  <div class="modal">
+    <h3>🏋️ Ajouter un exercice</h3>
+    <div class="field">
+      <label>Nom de l'exercice</label>
+      <input type="text" id="exerciseName" placeholder="Ex: Course à pied">
+    </div>
+    <div class="field">
+      <label>Durée (minutes)</label>
+      <input type="number" id="exerciseDuration" placeholder="Ex: 30" min="1">
+    </div>
+    <div class="field">
+      <label>Calories brûlées</label>
+      <input type="number" id="exerciseCalories" placeholder="Ex: 250" min="0">
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeAddExerciseModal()">Annuler</button>
+      <button onclick="addCustomExercise()">Ajouter</button>
     </div>
   </div>
 </div>
@@ -453,9 +493,12 @@ function removeCustomFood(index) {
   renderWeeklySummary();
 }
 
-// Close modal on overlay click
+// Close modals on overlay click
 document.getElementById('addFoodModal').addEventListener('click', function(e) {
   if (e.target === this) closeAddFoodModal();
+});
+document.getElementById('addExerciseModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddExerciseModal();
 });
 
 /* === Water === */
@@ -569,8 +612,13 @@ const EXERCISES = [
   { id:'meditate', name:'🧘 20 min méditation', cal:30 }
 ];
 
+function getCustomExercises() {
+  return getStore('custom_exercises_' + today(), []);
+}
+
 function renderExercises() {
   const done = getStore('exercise_' + today(), {});
+  const customExercises = getCustomExercises();
   const container = document.getElementById('exerciseList');
   container.innerHTML = '';
   let totalBurned = 0;
@@ -585,6 +633,17 @@ function renderExercises() {
     container.appendChild(div);
   });
 
+  customExercises.forEach((ex, i) => {
+    const cKey = 'cx' + i;
+    if (done[cKey]) totalBurned += ex.cal;
+    const div = document.createElement('div');
+    div.className = 'exercise custom-exercise' + (done[cKey] ? ' done' : '');
+    div.innerHTML = `
+      <label><input type="checkbox" ${done[cKey]?'checked':''} onchange="toggleExercise('cx${i}',this.checked)"> 🏃 ${ex.name} <span style="color:#888;font-size:0.8em">${ex.duration} min</span></label>
+      <span class="ex-cal">~${ex.cal} cal<button class="remove-exercise" onclick="removeCustomExercise(${i})" title="Supprimer">❌</button></span>`;
+    container.appendChild(div);
+  });
+
   document.getElementById('exBurned').textContent = totalBurned;
 }
 
@@ -592,6 +651,58 @@ function toggleExercise(id, checked) {
   const done = getStore('exercise_' + today(), {});
   done[id] = checked;
   setStore('exercise_' + today(), done);
+  renderExercises();
+}
+
+/* === Custom exercise modal === */
+function openAddExerciseModal() {
+  document.getElementById('addExerciseModal').classList.add('open');
+  document.getElementById('exerciseName').value = '';
+  document.getElementById('exerciseDuration').value = '';
+  document.getElementById('exerciseCalories').value = '';
+  setTimeout(() => document.getElementById('exerciseName').focus(), 100);
+}
+
+function closeAddExerciseModal() {
+  document.getElementById('addExerciseModal').classList.remove('open');
+}
+
+function addCustomExercise() {
+  const name = document.getElementById('exerciseName').value.trim();
+  const duration = parseInt(document.getElementById('exerciseDuration').value);
+  const cal = parseInt(document.getElementById('exerciseCalories').value);
+
+  if (!name) { document.getElementById('exerciseName').focus(); return; }
+  if (!duration || duration <= 0) { document.getElementById('exerciseDuration').focus(); return; }
+  if (isNaN(cal) || cal < 0) { document.getElementById('exerciseCalories').focus(); return; }
+
+  const exercises = getCustomExercises();
+  exercises.push({ name, duration, cal });
+  setStore('custom_exercises_' + today(), exercises);
+
+  closeAddExerciseModal();
+  renderExercises();
+}
+
+function removeCustomExercise(index) {
+  const exercises = getCustomExercises();
+  exercises.splice(index, 1);
+  setStore('custom_exercises_' + today(), exercises);
+
+  // Clean up done state for custom exercises
+  const done = getStore('exercise_' + today(), {});
+  const newDone = {};
+  Object.keys(done).forEach(k => {
+    if (!k.startsWith('cx')) {
+      newDone[k] = done[k];
+    } else {
+      const ci = parseInt(k.slice(2));
+      if (ci < index) newDone[k] = done[k];
+      else if (ci > index) newDone['cx' + (ci - 1)] = done[k];
+    }
+  });
+  setStore('exercise_' + today(), newDone);
+
   renderExercises();
 }
 
