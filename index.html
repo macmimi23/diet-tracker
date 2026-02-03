@@ -285,7 +285,7 @@
         <div class="ai-name" id="aiResName"></div>
         <div class="ai-detail" id="aiResDetail"></div>
       </div>
-      <div class="settings-link" onclick="openApiKeyModal()">⚙️ Clé API Gemini</div>
+      <div class="settings-link" onclick="openApiKeyModal()">⚙️ Clé API OpenRouter</div>
     </div>
     <div class="separator">— ou remplis manuellement —</div>
     <div class="field">
@@ -310,14 +310,15 @@
 <!-- MODAL: Clé API -->
 <div class="modal-overlay" id="apiKeyModal">
   <div class="modal">
-    <h3>🔑 Clé API Gemini (gratuit)</h3>
+    <h3>🔑 Clé API (gratuit)</h3>
     <p style="color:#aaa;font-size:0.82em;margin-bottom:12px;">
-      Pour l'estimation IA, il te faut une clé API Google Gemini (gratuite).<br>
-      → <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#00d4aa;">Créer une clé sur aistudio.google.com</a>
+      Pour l'estimation IA, crée un compte gratuit sur OpenRouter :<br>
+      → <a href="https://openrouter.ai/keys" target="_blank" style="color:#00d4aa;">Créer une clé sur openrouter.ai/keys</a><br>
+      <span style="font-size:0.9em;color:#888;">Compte gratuit, pas de carte bancaire requise.</span>
     </p>
     <div class="field">
-      <label>Clé API</label>
-      <input type="text" id="apiKeyInput" placeholder="AIzaSy...">
+      <label>Clé API OpenRouter</label>
+      <input type="text" id="apiKeyInput" placeholder="sk-or-v1-...">
     </div>
     <div class="btn-row">
       <button class="btn-cancel" onclick="closeApiKeyModal()">Annuler</button>
@@ -654,7 +655,7 @@ document.getElementById('apiKeyModal').addEventListener('click', function(e) {
 });
 
 /* === API Key management === */
-function getApiKey() { return localStorage.getItem('gemini_api_key') || ''; }
+function getApiKey() { return localStorage.getItem('openrouter_api_key') || ''; }
 function openApiKeyModal() {
   document.getElementById('apiKeyModal').classList.add('open');
   document.getElementById('apiKeyInput').value = getApiKey();
@@ -663,8 +664,8 @@ function openApiKeyModal() {
 function closeApiKeyModal() { document.getElementById('apiKeyModal').classList.remove('open'); }
 function saveApiKey() {
   const key = document.getElementById('apiKeyInput').value.trim();
-  if (key) localStorage.setItem('gemini_api_key', key);
-  else localStorage.removeItem('gemini_api_key');
+  if (key) localStorage.setItem('openrouter_api_key', key);
+  else localStorage.removeItem('openrouter_api_key');
   closeApiKeyModal();
 }
 
@@ -692,20 +693,23 @@ Sois raisonnable avec les portions courantes:
 - "une poignée" = ~30g
 - "une assiette" = ~300g
 - "un bol" = ~250ml
-Retourne UNIQUEMENT un JSON valide (pas de markdown, pas de \`\`\`):
+Retourne UNIQUEMENT un JSON valide (pas de markdown, pas de backticks):
 {"name":"nom court","grams":poids_en_g,"calories":cal,"protein":prot_g,"fat":lip_g,"carbs":gluc_g}`;
 
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1 }
-        })
-      }
-    );
+    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://macmimi23.github.io/diet-tracker/',
+        'X-Title': 'Macmimi Diet Tracker'
+      },
+      body: JSON.stringify({
+        model: 'google/gemma-3-4b-it:free',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1
+      })
+    });
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
@@ -713,8 +717,8 @@ Retourne UNIQUEMENT un JSON valide (pas de markdown, pas de \`\`\`):
     }
 
     const data = await resp.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Réponse vide de Gemini');
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new Error('Réponse vide');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Pas de JSON dans la réponse');
