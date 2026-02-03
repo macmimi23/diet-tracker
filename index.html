@@ -94,6 +94,39 @@
   }
   .btn-add-food:hover { background:#00d4aa35; }
 
+  /* === AI estimation === */
+  .ai-section { border-bottom:1px solid #ffffff15; padding-bottom:14px; margin-bottom:14px; }
+  .ai-section label { display:block; color:#aaa; font-size:0.8em; margin-bottom:4px; }
+  .ai-input-row { display:flex; gap:8px; }
+  .ai-input-row input[type=text] { flex:1; }
+  .ai-btn {
+    background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none;
+    padding:8px 14px; border-radius:10px; font-weight:bold; cursor:pointer;
+    font-size:0.85em; white-space:nowrap; transition:opacity 0.2s;
+  }
+  .ai-btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .ai-btn:active:not(:disabled) { transform:scale(0.97); }
+  .ai-result {
+    margin-top:8px; padding:8px 12px; background:#0f346080; border-radius:8px;
+    font-size:0.82em; color:#aaa; display:none;
+  }
+  .ai-result.show { display:block; }
+  .ai-result .ai-name { color:#00d4aa; font-weight:bold; }
+  .ai-result .ai-detail { margin-top:4px; }
+  .ai-error { color:#ff6b6b; font-size:0.8em; margin-top:6px; display:none; }
+  .ai-error.show { display:block; }
+  .separator { text-align:center; color:#ffffff30; font-size:0.75em; margin:4px 0; }
+  @keyframes aiPulse {
+    0%,100% { opacity:1; }
+    50% { opacity:0.4; }
+  }
+  .ai-loading { animation: aiPulse 1s ease-in-out infinite; }
+  .settings-link {
+    color:#ffffff40; font-size:0.75em; text-align:right; margin-top:6px;
+    cursor:pointer; text-decoration:underline;
+  }
+  .settings-link:hover { color:#ffffff80; }
+
   /* === Custom food items in meal list === */
   .custom-food { position:relative; }
   .custom-food .remove-food {
@@ -241,6 +274,20 @@
 <div class="modal-overlay" id="addFoodModal">
   <div class="modal">
     <h3>🍴 Ajouter un aliment</h3>
+    <div class="ai-section">
+      <label>🤖 Décris ce que tu as mangé</label>
+      <div class="ai-input-row">
+        <input type="text" id="aiDescription" placeholder="Ex: un grand verre de whey, une poignée de chips..." onkeydown="if(event.key==='Enter')estimateFood()">
+        <button class="ai-btn" id="aiEstimateBtn" onclick="estimateFood()">Estimer 🤖</button>
+      </div>
+      <div class="ai-error" id="aiError"></div>
+      <div class="ai-result" id="aiResult">
+        <div class="ai-name" id="aiResName"></div>
+        <div class="ai-detail" id="aiResDetail"></div>
+      </div>
+      <div class="settings-link" onclick="openApiKeyModal()">⚙️ Clé API Gemini</div>
+    </div>
+    <div class="separator">— ou remplis manuellement —</div>
     <div class="field">
       <label>Nom de l'aliment</label>
       <input type="text" id="foodName" placeholder="Ex: Yaourt grec">
@@ -256,6 +303,25 @@
     <div class="btn-row">
       <button class="btn-cancel" onclick="closeAddFoodModal()">Annuler</button>
       <button onclick="addCustomFood()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Clé API -->
+<div class="modal-overlay" id="apiKeyModal">
+  <div class="modal">
+    <h3>🔑 Clé API Gemini (gratuit)</h3>
+    <p style="color:#aaa;font-size:0.82em;margin-bottom:12px;">
+      Pour l'estimation IA, il te faut une clé API Google Gemini (gratuite).<br>
+      → <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#00d4aa;">Créer une clé sur aistudio.google.com</a>
+    </p>
+    <div class="field">
+      <label>Clé API</label>
+      <input type="text" id="apiKeyInput" placeholder="AIzaSy...">
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeApiKeyModal()">Annuler</button>
+      <button onclick="saveApiKey()">Sauvegarder</button>
     </div>
   </div>
 </div>
@@ -519,10 +585,13 @@ function toggleDetails(i) {
 /* === Custom food modal === */
 function openAddFoodModal() {
   document.getElementById('addFoodModal').classList.add('open');
+  document.getElementById('aiDescription').value = '';
+  document.getElementById('aiError').classList.remove('show');
+  document.getElementById('aiResult').classList.remove('show');
   document.getElementById('foodName').value = '';
   document.getElementById('foodGrams').value = '';
   document.getElementById('foodCalories').value = '';
-  setTimeout(() => document.getElementById('foodName').focus(), 100);
+  setTimeout(() => document.getElementById('aiDescription').focus(), 100);
 }
 
 function closeAddFoodModal() {
@@ -580,6 +649,98 @@ document.getElementById('addFoodModal').addEventListener('click', function(e) {
 document.getElementById('addExerciseModal').addEventListener('click', function(e) {
   if (e.target === this) closeAddExerciseModal();
 });
+document.getElementById('apiKeyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeApiKeyModal();
+});
+
+/* === API Key management === */
+function getApiKey() { return localStorage.getItem('gemini_api_key') || ''; }
+function openApiKeyModal() {
+  document.getElementById('apiKeyModal').classList.add('open');
+  document.getElementById('apiKeyInput').value = getApiKey();
+  setTimeout(() => document.getElementById('apiKeyInput').focus(), 100);
+}
+function closeApiKeyModal() { document.getElementById('apiKeyModal').classList.remove('open'); }
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (key) localStorage.setItem('gemini_api_key', key);
+  else localStorage.removeItem('gemini_api_key');
+  closeApiKeyModal();
+}
+
+/* === AI food estimation === */
+async function estimateFood() {
+  const desc = document.getElementById('aiDescription').value.trim();
+  if (!desc) { document.getElementById('aiDescription').focus(); return; }
+
+  const apiKey = getApiKey();
+  if (!apiKey) { openApiKeyModal(); return; }
+
+  const btn = document.getElementById('aiEstimateBtn');
+  const errEl = document.getElementById('aiError');
+  const resEl = document.getElementById('aiResult');
+  errEl.classList.remove('show');
+  resEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  btn.classList.add('ai-loading');
+
+  try {
+    const prompt = `Tu es un nutritionniste expert. Estime les valeurs nutritionnelles de: "${desc}".
+Sois raisonnable avec les portions courantes:
+- "un grand verre" = ~300ml, "un verre" = ~200ml
+- "une poignée" = ~30g
+- "une assiette" = ~300g
+- "un bol" = ~250ml
+Retourne UNIQUEMENT un JSON valide (pas de markdown, pas de \`\`\`):
+{"name":"nom court","grams":poids_en_g,"calories":cal,"protein":prot_g,"fat":lip_g,"carbs":gluc_g}`;
+
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1 }
+        })
+      }
+    );
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Erreur HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Réponse vide de Gemini');
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Pas de JSON dans la réponse');
+
+    const result = JSON.parse(jsonMatch[0]);
+
+    // Auto-fill the form fields
+    document.getElementById('foodName').value = result.name || desc;
+    document.getElementById('foodGrams').value = Math.round(result.grams || 0);
+    document.getElementById('foodCalories').value = Math.round(result.calories || 0);
+
+    // Show result preview
+    document.getElementById('aiResName').textContent = `${result.name} — ${Math.round(result.calories)} cal`;
+    document.getElementById('aiResDetail').textContent =
+      `~${Math.round(result.grams)}g · P: ${Math.round(result.protein)}g · L: ${Math.round(result.fat)}g · G: ${Math.round(result.carbs)}g`;
+    resEl.classList.add('show');
+
+  } catch (e) {
+    errEl.textContent = '❌ ' + e.message;
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Estimer 🤖';
+    btn.classList.remove('ai-loading');
+  }
+}
 
 /* === Water === */
 function renderWater() {
