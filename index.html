@@ -194,6 +194,7 @@
   .next-meal-items { list-style:none; margin-bottom:8px; }
   .next-meal-items li { color:#bbb; font-size:0.82em; padding:2px 0; }
   .next-meal-items li span { color:#00d4aa; }
+  .next-meal-recipe { color:#ccc; font-size:0.82em; line-height:1.5; margin-bottom:10px; padding:8px 10px; background:#0f346040; border-radius:8px; border-left:3px solid #00d4aa40; }
   .next-meal-total { font-weight:bold; color:#00d4aa; font-size:1em; text-align:right; }
   .next-meal-done { text-align:center; color:#666; font-size:0.9em; padding:8px 0; }
 </style>
@@ -353,32 +354,92 @@
 <script>
 const MEALS = {
   1: { label:"Jour 1", cal:1614, prot:123, fat:94, carb:53, meals:[
-    {name:"🍳 Petit-déj", time:"7h", cal:292, items:["Mûres 120g — 52","Épinards sautés 150g — 50","Œufs brouillés 133g — 190"]},
-    {name:"🥜 Snack 10h", time:"10h", cal:111, items:["Amandes grillées 19g — 111"]},
-    {name:"🥗 Déjeuner", time:"12h30", cal:498, items:["Œufs durs ×2 100g — 156","Tortilla wrap 60g — 180","Poulet grillé 90g — 112","Houmous 30g — 50"]},
-    {name:"🥕 Snack 16h", time:"16h", cal:173, items:["Carottes crues 115g — 47","Sauce ranch 30g — 126"]},
-    {name:"🍽️ Dîner", time:"20h", cal:540, items:["Légumes variés 40g — 24","Côtelettes de porc 210g — 440","Assaisonnement ranch 25g — 76"]}
+    {name:"🍳 Petit-déj", time:"7h", cal:292,
+     recipe:"Chauffer une poêle avec un spray d'huile. Faire sauter les épinards 2 min. Dans un bol, battre les œufs, sel, poivre. Brouiller à feu moyen 3 min. Servir avec les mûres fraîches à côté.",
+     ingredients:["2⅔ œufs brouillés (133g)","Épinards frais sautés (150g)","Mûres fraîches (120g)"],
+     items:["Mûres 120g — 52","Épinards sautés 150g — 50","Œufs brouillés 133g — 190"]},
+    {name:"🥜 Snack 10h", time:"10h", cal:111,
+     recipe:"Une petite poignée d'amandes grillées, nature.",
+     ingredients:["Amandes grillées (19g)"],
+     items:["Amandes grillées 19g — 111"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:498,
+     recipe:"Faire cuire 2 œufs durs (10 min eau bouillante). Émincer le poulet grillé. Tartiner le houmous sur le wrap, ajouter le poulet et les œufs coupés en rondelles. Rouler et couper en deux.",
+     ingredients:["Tortilla wrap (60g)","Poulet grillé émincé (90g)","2 œufs durs (100g)","Houmous (30g)"],
+     items:["Œufs durs ×2 100g — 156","Tortilla wrap 60g — 180","Poulet grillé 90g — 112","Houmous 30g — 50"]},
+    {name:"🥕 Snack 16h", time:"16h", cal:173,
+     recipe:"Couper les carottes en bâtonnets. Servir avec la sauce ranch pour tremper.",
+     ingredients:["Carottes crues en bâtonnets (115g)","Sauce ranch (30g)"],
+     items:["Carottes crues 115g — 47","Sauce ranch 30g — 126"]},
+    {name:"🍽️ Dîner", time:"20h", cal:540,
+     recipe:"Préchauffer le four à 200°C. Assaisonner les côtelettes avec le ranch et un filet d'huile. Enfourner 20 min en retournant à mi-cuisson. Servir avec les légumes sautés à la poêle.",
+     ingredients:["Côtelettes de porc (210g, ~1½)","Légumes variés sautés (40g)","Assaisonnement ranch + huile (25g)"],
+     items:["Légumes variés 40g — 24","Côtelettes de porc 210g — 440","Assaisonnement ranch 25g — 76"]}
   ]},
   2: { label:"Jour 2", cal:1541, prot:129, fat:68, carb:78, meals:[
-    {name:"🍳 Petit-déj", time:"7h", cal:239, items:["Concombre tranché 200g — 30","Blancs d'œuf 230g — 120","Épinards 80g — 18","Huile d'olive 5ml — 41"]},
-    {name:"🥜 Snack 10h", time:"10h", cal:80, items:["Shake whey ½ dose 15g — 80"]},
-    {name:"🥗 Déjeuner", time:"12h30", cal:614, items:["Œuf dur 50g — 78","Tortilla wrap 60g — 180","Poulet grillé 80g — 100","Mayonnaise 15g — 100","Laitue 30g — 5","Poivron rouge 40g — 10","Canneberges 15g — 47","Amandes effilées 10g — 58"]},
-    {name:"🍎 Snack 16h", time:"16h", cal:155, items:["Poivron rouge 100g — 31","Houmous 40g — 77","Myrtilles 75g — 47"]},
-    {name:"🍽️ Dîner", time:"20h", cal:453, items:["Brocoli rôti 200g — 196","Cuisses de poulet 170g — 257"]}
+    {name:"🍳 Petit-déj", time:"7h", cal:239,
+     recipe:"Chauffer l'huile d'olive dans une poêle. Ajouter les épinards, faire tomber 1 min. Verser les blancs d'œuf, brouiller à feu moyen 3 min, sel et poivre. Servir avec le concombre tranché à côté.",
+     ingredients:["7 blancs d'œuf (230g)","Épinards frais (80g)","Concombre tranché (200g)","Huile d'olive (5ml)"],
+     items:["Concombre tranché 200g — 30","Blancs d'œuf 230g — 120","Épinards 80g — 18","Huile d'olive 5ml — 41"]},
+    {name:"🥜 Snack 10h", time:"10h", cal:80,
+     recipe:"Mélanger une demi-dose de whey (15g) dans 200ml d'eau froide. Shaker et boire.",
+     ingredients:["Whey protéinée (15g, ½ dose)","Eau (200ml)"],
+     items:["Shake whey ½ dose 15g — 80"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:614,
+     recipe:"Wrap poulet-crunch : tartiner la mayo sur le wrap. Ajouter la laitue, le poulet émincé, l'œuf dur coupé, le poivron en lamelles, les canneberges et les amandes effilées. Rouler serré.",
+     ingredients:["Tortilla wrap (60g)","Poulet grillé émincé (80g)","1 œuf dur (50g)","Mayonnaise (15g)","Laitue (30g)","Poivron rouge (40g)","Canneberges séchées (15g)","Amandes effilées (10g)"],
+     items:["Œuf dur 50g — 78","Tortilla wrap 60g — 180","Poulet grillé 80g — 100","Mayonnaise 15g — 100","Laitue 30g — 5","Poivron rouge 40g — 10","Canneberges 15g — 47","Amandes effilées 10g — 58"]},
+    {name:"🍎 Snack 16h", time:"16h", cal:155,
+     recipe:"Couper le poivron en bâtonnets. Servir avec le houmous et les myrtilles à côté.",
+     ingredients:["Poivron rouge en bâtonnets (100g)","Houmous (40g)","Myrtilles (75g)"],
+     items:["Poivron rouge 100g — 31","Houmous 40g — 77","Myrtilles 75g — 47"]},
+    {name:"🍽️ Dîner", time:"20h", cal:453,
+     recipe:"Préchauffer le four à 200°C. Couper le brocoli en fleurettes, arroser d'huile d'olive, sel, poivre. Rôtir 20 min. Assaisonner les cuisses de poulet (paprika, ail, sel). Cuire à la poêle 6-7 min par face. Servir ensemble.",
+     ingredients:["Cuisses de poulet désossées (170g)","Brocoli en fleurettes (200g)","Huile d'olive (5ml)"],
+     items:["Brocoli rôti 200g — 196","Cuisses de poulet 170g — 257"]}
   ]},
   3: { label:"Jour 3", cal:1596, prot:143, fat:51, carb:121, meals:[
-    {name:"🍳 Petit-déj", time:"7h", cal:217, items:["Flocons d'avoine 45g — 170","Eau 200ml — 0","Cannelle 3g — 7","Miel 10g — 40"]},
-    {name:"🍌 Snack 10h", time:"10h", cal:117, items:["Banane 120g — 117"]},
-    {name:"🥗 Déjeuner", time:"12h30", cal:618, items:["Œufs durs ×2 100g — 156","Pain complet 2 tr. 60g — 150","Dinde en tranches 120g — 130","Moutarde 10g — 10","Laitue 20g — 3"]},
-    {name:"🍮 Snack 16h", time:"16h", cal:213, items:["Power jello cups ×2 — 213"]},
-    {name:"🍽️ Dîner", time:"20h", cal:431, items:["Haricots verts 150g — 47","Huile d'olive 7ml — 61","Poulet à l'ail 170g — 274","Légumes variés 80g — 49"]}
+    {name:"🍳 Petit-déj", time:"7h", cal:217,
+     recipe:"Porter l'eau à ébullition. Ajouter les flocons d'avoine, cuire 3-4 min en remuant. Ajouter la cannelle et le miel. Mélanger et servir tiède.",
+     ingredients:["Flocons d'avoine (45g)","Eau (200ml)","Cannelle (3g)","Miel (10g)"],
+     items:["Flocons d'avoine 45g — 170","Eau 200ml — 0","Cannelle 3g — 7","Miel 10g — 40"]},
+    {name:"🍌 Snack 10h", time:"10h", cal:117,
+     recipe:"Une banane, tout simplement.",
+     ingredients:["Banane (120g, 1 moyenne)"],
+     items:["Banane 120g — 117"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:618,
+     recipe:"Sandwich dinde : tartiner la moutarde sur le pain complet. Disposer la laitue, les tranches de dinde et les œufs durs coupés. Refermer. Couper en deux.",
+     ingredients:["Pain complet (2 tranches, 60g)","Dinde en tranches (120g)","2 œufs durs (100g)","Moutarde (10g)","Laitue (20g)"],
+     items:["Œufs durs ×2 100g — 156","Pain complet 2 tr. 60g — 150","Dinde en tranches 120g — 130","Moutarde 10g — 10","Laitue 20g — 3"]},
+    {name:"🍮 Snack 16h", time:"16h", cal:213,
+     recipe:"Préparer les jello cups selon les instructions du paquet. Servir frais (2 cups).",
+     ingredients:["Power jello cups (×2)"],
+     items:["Power jello cups ×2 — 213"]},
+    {name:"🍽️ Dîner", time:"20h", cal:431,
+     recipe:"Émincer l'ail. Chauffer l'huile d'olive dans une poêle. Saisir le poulet 5 min par face avec l'ail. Faire sauter les haricots verts et les légumes variés dans la même poêle 3-4 min. Servir ensemble.",
+     ingredients:["Filet de poulet à l'ail (170g)","Haricots verts (150g)","Légumes variés (80g)","Huile d'olive (7ml)"],
+     items:["Haricots verts 150g — 47","Huile d'olive 7ml — 61","Poulet à l'ail 170g — 274","Légumes variés 80g — 49"]}
   ]},
   7: { label:"Jour 7", cal:1591, prot:109, fat:106, carb:33, meals:[
-    {name:"🍳 Petit-déj", time:"7h", cal:292, items:["Mûres 120g — 52","Épinards sautés 150g — 50","Œufs brouillés 133g — 190"]},
-    {name:"🥜 Snack 10h", time:"10h", cal:111, items:["Amandes grillées 19g — 111"]},
-    {name:"🥗 Déjeuner", time:"12h30", cal:476, items:["Courgettes 250g — 43","Parmesan 20g — 80","Huile d'olive 10ml — 90","Cabillaud 227g — 200","Épices cajun + huile 5ml — 63"]},
-    {name:"🥕 Snack 16h", time:"16h", cal:173, items:["Carottes crues 115g — 47","Sauce ranch 30g — 126"]},
-    {name:"🍽️ Dîner", time:"20h", cal:539, items:["Poivron rouge 100g — 26","Oignon rouge 30g — 12","Vinaigrette 10ml — 32","Steak bavette 189g — 469"]}
+    {name:"🍳 Petit-déj", time:"7h", cal:292,
+     recipe:"Chauffer une poêle avec un spray d'huile. Faire sauter les épinards 2 min. Dans un bol, battre les œufs, sel, poivre. Brouiller à feu moyen 3 min. Servir avec les mûres fraîches à côté.",
+     ingredients:["2⅔ œufs brouillés (133g)","Épinards frais sautés (150g)","Mûres fraîches (120g)"],
+     items:["Mûres 120g — 52","Épinards sautés 150g — 50","Œufs brouillés 133g — 190"]},
+    {name:"🥜 Snack 10h", time:"10h", cal:111,
+     recipe:"Une petite poignée d'amandes grillées, nature.",
+     ingredients:["Amandes grillées (19g)"],
+     items:["Amandes grillées 19g — 111"]},
+    {name:"🥗 Déjeuner", time:"12h30", cal:476,
+     recipe:"Tagliatelles de courgettes au cabillaud : éplucher les courgettes en tagliatelles (économe ou spiralizer). Chauffer l'huile d'olive. Assaisonner le cabillaud avec les épices cajun, saisir 4 min par face. Sauter les courgettes 2 min. Servir avec le parmesan râpé.",
+     ingredients:["Courgettes en tagliatelles (250g)","Filet de cabillaud (227g)","Parmesan râpé (20g)","Huile d'olive (10ml)","Épices cajun"],
+     items:["Courgettes 250g — 43","Parmesan 20g — 80","Huile d'olive 10ml — 90","Cabillaud 227g — 200","Épices cajun + huile 5ml — 63"]},
+    {name:"🥕 Snack 16h", time:"16h", cal:173,
+     recipe:"Couper les carottes en bâtonnets. Servir avec la sauce ranch pour tremper.",
+     ingredients:["Carottes crues en bâtonnets (115g)","Sauce ranch (30g)"],
+     items:["Carottes crues 115g — 47","Sauce ranch 30g — 126"]},
+    {name:"🍽️ Dîner", time:"20h", cal:539,
+     recipe:"Couper le steak en dés, le poivron en lamelles et l'oignon en rondelles. Saisir la viande à feu vif 3-4 min. Ajouter les légumes, cuire 3 min. Assaisonner avec la vinaigrette. Servir chaud.",
+     ingredients:["Steak bavette en dés (189g)","Poivron rouge (100g)","Oignon rouge (30g)","Vinaigrette (10ml)"],
+     items:["Poivron rouge 100g — 26","Oignon rouge 30g — 12","Vinaigrette 10ml — 32","Steak bavette 189g — 469"]}
   ]}
 };
 
@@ -429,10 +490,13 @@ function renderNextMeal() {
   else if (diff < 60) countdownText = 'dans ' + diff + ' min';
   else { const h = Math.floor(diff / 60); const m = diff % 60; countdownText = 'dans ' + h + 'h' + (m > 0 ? String(m).padStart(2,'0') : ''); }
 
-  const itemsHtml = meal.items.map(it => {
-    const parts = it.split(' — ');
-    return '<li>' + parts[0] + ' — <span>' + parts[1] + ' cal</span></li>';
+  const ingredientsHtml = (meal.ingredients || meal.items).map(it => {
+    return '<li>• ' + it.replace(/ — \d+$/, '') + '</li>';
   }).join('');
+
+  const recipeHtml = meal.recipe
+    ? '<div class="next-meal-recipe">👨‍🍳 ' + meal.recipe + '</div>'
+    : '';
 
   box.innerHTML =
     '<div class="next-meal-card">' +
@@ -442,7 +506,8 @@ function renderNextMeal() {
       '</div>' +
       '<div class="next-meal-name">' + meal.name + '</div>' +
       '<div class="next-meal-time">' + found.label + '</div>' +
-      '<ul class="next-meal-items">' + itemsHtml + '</ul>' +
+      '<ul class="next-meal-items">' + ingredientsHtml + '</ul>' +
+      recipeHtml +
       '<div class="next-meal-total">' + meal.cal + ' cal</div>' +
     '</div>';
 }
